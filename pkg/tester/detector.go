@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 )
@@ -47,36 +49,42 @@ type RegistryPackage struct {
 	Versions map[string]PackageVersionInfo `json:"versions"`
 }
 
-type Detector struct {
-	HTTPClient    *http.Client
-	RegistryURL   string
-	RegistryOwner string
+type RegistryConfig struct {
+	MetadataURLTemplate string
 }
 
-func NewDetector() *Detector {
+type Detector struct {
+	HTTPClient *http.Client
+	Registry   RegistryConfig
+}
+
+func NewDetector(registry RegistryConfig) *Detector {
 	return &Detector{
 		HTTPClient: &http.Client{Timeout: 30 * time.Second},
-		RegistryURL: "https://registry.npmjs.org",
+		Registry:   registry,
 	}
 }
 
-func NewDetectorWithRegistry(registryURL, registryOwner string) *Detector {
-	return &Detector{
-		HTTPClient: &http.Client{Timeout: 30 * time.Second},
-		RegistryURL: strings.TrimSuffix(registryURL, "/"),
-		RegistryOwner: registryOwner,
+func NewNPMRegistryConfig(baseURL string) RegistryConfig {
+	return RegistryConfig{
+		MetadataURLTemplate: strings.TrimSuffix(baseURL, "/") + "/{package}",
+	}
+}
+
+func NewGiteaRegistryConfig(baseURL, owner string) RegistryConfig {
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	return RegistryConfig{
+		MetadataURLTemplate: baseURL + path.Join("/api/packages", owner, "npm") + "/{package}",
 	}
 }
 
 func (d *Detector) DetectPackage(name, version string) (*PackageInfo, error) {
-	var url string
-	if d.RegistryOwner != "" {
-		url = fmt.Sprintf("%s/api/packages/%s/npm/%s", d.RegistryURL, d.RegistryOwner, name)
-	} else {
-		url = fmt.Sprintf("%s/%s", strings.TrimSuffix(d.RegistryURL, "/"), name)
+	metadataURL, err := d.metadataURL(name)
+	if err != nil {
+		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, metadataURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -101,10 +109,10 @@ func (d *Detector) DetectPackage(name, version string) (*PackageInfo, error) {
 	}
 
 	info := &PackageInfo{
-		Name: versionInfo.Name,
+		Name:    versionInfo.Name,
 		Version: versionInfo.Version,
-		Main: versionInfo.Main,
-		Module: versionInfo.Module,
+		Main:    versionInfo.Main,
+		Module:  versionInfo.Module,
 		Exports: versionInfo.Exports,
 		Scripts: versionInfo.Scripts,
 	}
@@ -114,6 +122,13 @@ func (d *Detector) DetectPackage(name, version string) (*PackageInfo, error) {
 	info.HasInstall = d.hasScript(versionInfo.Scripts, "preinstall") || d.hasScript(versionInfo.Scripts, "postinstall") || d.hasScript(versionInfo.Scripts, "install")
 
 	return info, nil
+}
+
+func (d *Detector) metadataURL(packageName string) (string, error) {
+	if d.Registry.MetadataURLTemplate == "" {
+		return "", fmt.Errorf("metadata URL template is required")
+	}
+	return strings.ReplaceAll(d.Registry.MetadataURLTemplate, "{package}", url.PathEscape(packageName)), nil
 }
 
 func (d *Detector) detectModuleType(v *PackageVersionInfo) PackageType {

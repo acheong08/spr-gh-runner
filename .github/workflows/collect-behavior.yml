@@ -11,15 +11,27 @@ on:
         description: 'Package version (e.g., 4.17.21)'
         required: true
         type: string
+      registry:
+        description: 'Registry preset'
+        required: true
+        type: choice
+        options:
+          - gitea
+          - npm
+        default: gitea
 
 env:
-  REGISTRY_URL: https://git.duti.dev
-  REGISTRY_OWNER: acheong08
+  GITEA_REGISTRY_URL: https://git.duti.dev
+  GITEA_REGISTRY_OWNER: acheong08
+  NPM_REGISTRY_URL: https://registry.npmjs.org
   TRACEE_VERSION: v0.24.1
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/${{ github.repository }}/behavior-tools:latest
       credentials:
@@ -41,15 +53,44 @@ jobs:
           fi
           echo "✅ Input validation passed: ${{ inputs.package }}@${{ inputs.version }}"
 
+      - name: Select registry preset
+        id: registry
+        run: |
+          case "${{ inputs.registry }}" in
+            gitea)
+              echo "type=gitea" >> "$GITHUB_OUTPUT"
+              echo "url=${{ env.GITEA_REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
+              echo "owner=${{ env.GITEA_REGISTRY_OWNER }}" >> "$GITHUB_OUTPUT"
+              echo "npm_config_registry=${{ env.GITEA_REGISTRY_URL }}/api/packages/${{ env.GITEA_REGISTRY_OWNER }}/npm/" >> "$GITHUB_OUTPUT"
+              ;;
+            npm)
+              echo "type=npm" >> "$GITHUB_OUTPUT"
+              echo "url=${{ env.NPM_REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
+              echo "owner=" >> "$GITHUB_OUTPUT"
+              echo "npm_config_registry=${{ env.NPM_REGISTRY_URL }}/" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported registry preset: ${{ inputs.registry }}" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Generate test package
         run: |
-          test-generator \
-            --package "${{ inputs.package }}" \
-            --version "${{ inputs.version }}" \
-            --output ./test-pkg \
-            --registry-url "${{ env.REGISTRY_URL }}" \
-            --registry-owner "${{ env.REGISTRY_OWNER }}" \
+          args=(
+            --package "${{ inputs.package }}"
+            --version "${{ inputs.version }}"
+            --output ./test-pkg
+            --registry-url "${{ steps.registry.outputs.url }}"
+            --registry-type "${{ steps.registry.outputs.type }}"
             --templates-dir "${TEMPLATES_DIR}"
+          )
+
+          if [[ -n "${{ steps.registry.outputs.owner }}" ]]; then
+            args+=(--registry-owner "${{ steps.registry.outputs.owner }}")
+          fi
+
+          test-generator "${args[@]}"
           echo "✅ Test package generated"
           ls -la ./test-pkg/
 
@@ -80,7 +121,7 @@ jobs:
           echo "Creating isolated container..."
           docker run -d --name analysis \
             --network host \
-            -e NPM_CONFIG_REGISTRY=${{ env.REGISTRY_URL }}/api/packages/${{ env.REGISTRY_OWNER }}/npm/ \
+            -e NPM_CONFIG_REGISTRY=${{ steps.registry.outputs.npm_config_registry }} \
             node:20 sleep 3600
           echo "✅ Container created"
 

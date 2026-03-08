@@ -32,15 +32,8 @@ type Generator struct {
 	detector     *Detector
 }
 
-func NewGenerator(templatesDir string) *Generator {
-	return &Generator{templatesDir: templatesDir, detector: NewDetector()}
-}
-
-func NewGeneratorWithRegistry(templatesDir, registryURL, registryOwner string) *Generator {
-	return &Generator{
-		templatesDir: templatesDir,
-		detector: NewDetectorWithRegistry(registryURL, registryOwner),
-	}
+func NewGenerator(templatesDir string, registry RegistryConfig) *Generator {
+	return &Generator{templatesDir: templatesDir, detector: NewDetector(registry)}
 }
 
 func (g *Generator) GenerateAll(name, version, outputDir string) ([]string, error) {
@@ -85,18 +78,18 @@ func (g *Generator) GenerateAll(name, version, outputDir string) ([]string, erro
 
 func (g *Generator) generateInstallTest(info *PackageInfo, outputDir string) error {
 	data := TestPackage{
-		Name: fmt.Sprintf("test-install-%s", NormalizePackageName(info.Name)),
-		Version: "1.0.0",
-		PackageName: info.Name,
+		Name:           fmt.Sprintf("test-install-%s", NormalizePackageName(info.Name)),
+		Version:        "1.0.0",
+		PackageName:    info.Name,
 		PackageVersion: info.Version,
-		ModuleType: g.detector.GetPackageJSONType(info),
-		OutputDir: outputDir,
+		ModuleType:     g.detector.GetPackageJSONType(info),
+		OutputDir:      outputDir,
 	}
 	pkgJSON := PackageJSON{
-		Name: data.Name,
-		Version: data.Version,
-		Description: fmt.Sprintf("Install-time behavior test for %s@%s", info.Name, info.Version),
-		Private: true,
+		Name:         data.Name,
+		Version:      data.Version,
+		Description:  fmt.Sprintf("Install-time behavior test for %s@%s", info.Name, info.Version),
+		Private:      true,
 		Dependencies: map[string]string{info.Name: info.Version},
 	}
 	return g.generateTestPackage("install-test", data, outputDir, pkgJSON)
@@ -104,19 +97,19 @@ func (g *Generator) generateInstallTest(info *PackageInfo, outputDir string) err
 
 func (g *Generator) generateImportTest(info *PackageInfo, outputDir string) error {
 	data := TestPackage{
-		Name: fmt.Sprintf("test-import-%s", NormalizePackageName(info.Name)),
-		Version: "1.0.0",
-		PackageName: info.Name,
+		Name:           fmt.Sprintf("test-import-%s", NormalizePackageName(info.Name)),
+		Version:        "1.0.0",
+		PackageName:    info.Name,
 		PackageVersion: info.Version,
-		ModuleType: g.detector.GetPackageJSONType(info),
-		OutputDir: outputDir,
+		ModuleType:     g.detector.GetPackageJSONType(info),
+		OutputDir:      outputDir,
 	}
 	pkgJSON := PackageJSON{
-		Name: data.Name,
-		Version: data.Version,
-		Description: fmt.Sprintf("Import-time behavior test for %s@%s", info.Name, info.Version),
-		Private: true,
-		Type: data.ModuleType,
+		Name:         data.Name,
+		Version:      data.Version,
+		Description:  fmt.Sprintf("Import-time behavior test for %s@%s", info.Name, info.Version),
+		Private:      true,
+		Type:         data.ModuleType,
 		Dependencies: map[string]string{info.Name: info.Version},
 	}
 	return g.generateTestPackage("import-test", data, outputDir, pkgJSON)
@@ -124,19 +117,19 @@ func (g *Generator) generateImportTest(info *PackageInfo, outputDir string) erro
 
 func (g *Generator) generatePrototypeTest(info *PackageInfo, outputDir string) error {
 	data := TestPackage{
-		Name: fmt.Sprintf("test-prototype-%s", NormalizePackageName(info.Name)),
-		Version: "1.0.0",
-		PackageName: info.Name,
+		Name:           fmt.Sprintf("test-prototype-%s", NormalizePackageName(info.Name)),
+		Version:        "1.0.0",
+		PackageName:    info.Name,
 		PackageVersion: info.Version,
-		ModuleType: g.detector.GetPackageJSONType(info),
-		OutputDir: outputDir,
+		ModuleType:     g.detector.GetPackageJSONType(info),
+		OutputDir:      outputDir,
 	}
 	pkgJSON := PackageJSON{
-		Name: data.Name,
-		Version: data.Version,
-		Description: fmt.Sprintf("Prototype pollution test for %s@%s", info.Name, info.Version),
-		Private: true,
-		Type: data.ModuleType,
+		Name:         data.Name,
+		Version:      data.Version,
+		Description:  fmt.Sprintf("Prototype pollution test for %s@%s", info.Name, info.Version),
+		Private:      true,
+		Type:         data.ModuleType,
 		Dependencies: map[string]string{info.Name: info.Version},
 	}
 	return g.generateTestPackage("prototype-test", data, outputDir, pkgJSON)
