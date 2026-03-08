@@ -25,22 +25,27 @@ env:
   GITEA_REGISTRY_OWNER: acheong08
   NPM_REGISTRY_URL: https://registry.npmjs.org
   TRACEE_VERSION: v0.24.1
+  TOOLS_RELEASE: tools-latest
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    container:
-      image: ghcr.io/${{ github.repository }}/behavior-tools:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: --privileged
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Download test-generator from releases
+        run: |
+          echo "Downloading test-generator from releases..."
+          wget -q "https://github.com/${{ github.repository }}/releases/download/${{ env.TOOLS_RELEASE }}/test-generator" -O /tmp/test-generator
+          chmod +x /tmp/test-generator
+          echo "✅ test-generator downloaded"
+          
+          echo "Downloading templates..."
+          mkdir -p /tmp/templates
+          wget -q "https://github.com/${{ github.repository }}/releases/download/${{ env.TOOLS_RELEASE }}/templates.tar.gz" -O /tmp/templates.tar.gz
+          tar -xzf /tmp/templates.tar.gz -C /tmp/templates
+          echo "✅ Templates extracted"
+          
+          echo "TOOLS_DIR=/tmp" >> "$GITHUB_ENV"
+          echo "TEMPLATES_DIR=/tmp/templates" >> "$GITHUB_ENV"
 
       - name: Validate inputs
         run: |
@@ -78,20 +83,25 @@ jobs:
 
       - name: Generate test package
         run: |
-          args=(
-            --package "${{ inputs.package }}"
-            --version "${{ inputs.version }}"
-            --output ./test-pkg
-            --registry-url "${{ steps.registry.outputs.url }}"
-            --registry-type "${{ steps.registry.outputs.type }}"
-            --templates-dir "${TEMPLATES_DIR}"
-          )
-
           if [[ -n "${{ steps.registry.outputs.owner }}" ]]; then
-            args+=(--registry-owner "${{ steps.registry.outputs.owner }}")
+            /tmp/test-generator \
+              --package "${{ inputs.package }}" \
+              --version "${{ inputs.version }}" \
+              --output ./test-pkg \
+              --registry-url "${{ steps.registry.outputs.url }}" \
+              --registry-type "${{ steps.registry.outputs.type }}" \
+              --registry-owner "${{ steps.registry.outputs.owner }}" \
+              --templates-dir "${TEMPLATES_DIR}"
+          else
+            /tmp/test-generator \
+              --package "${{ inputs.package }}" \
+              --version "${{ inputs.version }}" \
+              --output ./test-pkg \
+              --registry-url "${{ steps.registry.outputs.url }}" \
+              --registry-type "${{ steps.registry.outputs.type }}" \
+              --templates-dir "${TEMPLATES_DIR}"
           fi
-
-          test-generator "${args[@]}"
+          
           echo "✅ Test package generated"
           ls -la ./test-pkg/
 

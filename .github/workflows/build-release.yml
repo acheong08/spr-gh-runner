@@ -1,0 +1,70 @@
+name: Build and Release Tools
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cmd/**'
+      - 'pkg/**'
+      - 'templates/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/build-release.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build test-generator binary
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w" \
+            -o dist/test-generator \
+            ./cmd/test-generator
+          echo "✅ test-generator built successfully"
+          ls -la dist/
+
+      - name: Create templates archive
+        run: |
+          tar -czf dist/templates.tar.gz -C templates .
+          echo "✅ Templates archived"
+          ls -la dist/
+
+      - name: Delete existing release
+        run: |
+          gh release delete tools-latest --yes || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create new release
+        run: |
+          gh release create tools-latest \
+            --title "Tools (Latest)" \
+            --notes "Latest build of test-generator and templates" \
+            --latest=false \
+            dist/test-generator \
+            dist/templates.tar.gz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tools-build
+          path: |
+            dist/test-generator
+            dist/templates.tar.gz
+          retention-days: 1
