@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm \
     sudo \
     bash \
+    libelf1 \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspace
 COPY --from=builder /out/test-generator /usr/local/bin/test-generator
