@@ -51,7 +51,6 @@ type Detector struct {
 	HTTPClient    *http.Client
 	RegistryURL   string
 	RegistryOwner string
-	RegistryToken string
 }
 
 func NewDetector() *Detector {
@@ -61,12 +60,11 @@ func NewDetector() *Detector {
 	}
 }
 
-func NewDetectorWithRegistry(registryURL, registryOwner, registryToken string) *Detector {
+func NewDetectorWithRegistry(registryURL, registryOwner string) *Detector {
 	return &Detector{
 		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 		RegistryURL: strings.TrimSuffix(registryURL, "/"),
 		RegistryOwner: registryOwner,
-		RegistryToken: registryToken,
 	}
 }
 
@@ -82,10 +80,6 @@ func (d *Detector) DetectPackage(name, version string) (*PackageInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	if d.RegistryToken != "" {
-		req.Header.Set("Authorization", "Bearer "+d.RegistryToken)
-	}
-
 	resp, err := d.HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch package info: %w", err)

@@ -49,7 +49,6 @@ jobs:
             --output ./test-pkg \
             --registry-url "${{ env.REGISTRY_URL }}" \
             --registry-owner "${{ env.REGISTRY_OWNER }}" \
-            --registry-token "${{ secrets.REGISTRY_TOKEN }}" \
             --templates-dir "${TEMPLATES_DIR}"
           echo "✅ Test package generated"
           ls -la ./test-pkg/

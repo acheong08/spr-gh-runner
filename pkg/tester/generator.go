@@ -36,10 +36,10 @@ func NewGenerator(templatesDir string) *Generator {
 	return &Generator{templatesDir: templatesDir, detector: NewDetector()}
 }
 
-func NewGeneratorWithRegistry(templatesDir, registryURL, registryOwner, registryToken string) *Generator {
+func NewGeneratorWithRegistry(templatesDir, registryURL, registryOwner string) *Generator {
 	return &Generator{
 		templatesDir: templatesDir,
-		detector: NewDetectorWithRegistry(registryURL, registryOwner, registryToken),
+		detector: NewDetectorWithRegistry(registryURL, registryOwner),
 	}
 }
 
