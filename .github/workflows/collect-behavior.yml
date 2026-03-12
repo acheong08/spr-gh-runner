@@ -22,7 +22,7 @@ on:
 
 env:
   GITEA_REGISTRY_URL: https://git.duti.dev
-  GITEA_REGISTRY_OWNER: acheong08
+  GITEA_REGISTRY_OWNER: spr-sandbox
   NPM_REGISTRY_URL: https://registry.npmjs.org
   TRACEE_VERSION: v0.24.1
   TOOLS_RELEASE: tools-latest
