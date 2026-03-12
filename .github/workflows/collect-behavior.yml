@@ -144,7 +144,7 @@ jobs:
           sudo ./dist/tracee \
             --install-path /tmp/tracee-work \
             --scope container \
-            --events execve,execveat,open,openat,connect,net_packet_dns_request \
+            --events execve,execveat,open,openat,connect,net_packet_dns_request,net_packet_dns_response \
             --output json:/tmp/tracee-out/behavior.jsonl &
           TRACEE_PID=$!
           echo "Tracee started with PID: $TRACEE_PID"
@@ -181,7 +181,8 @@ jobs:
 
       - name: Run CLI test (if applicable)
         run: |
-          if [ -d "./test-pkg/${{ steps.normalize.outputs.normalized }}@${{ inputs.version }}/cli" ]; then
+          # HAS_CLI marker is created by test-generator when the package declares a bin field
+          if [ -f "./test-pkg/${{ steps.normalize.outputs.normalized }}@${{ inputs.version }}/cli/HAS_CLI" ]; then
             echo "=== Running CLI Test ==="
             echo "Testing CLI via npx with --version flag..."
             docker exec analysis sh -c "cd /test && timeout 30s npx ${{ inputs.package }} --version" || echo "⚠️ CLI test completed with exit code $?"
@@ -223,15 +224,5 @@ jobs:
           name: behavior-${{ steps.normalize.outputs.normalized }}-${{ inputs.version }}-${{ github.run_id }}
           path: /tmp/tracee-out/behavior.jsonl
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
 
-      - name: Upload debug info on failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: debug-${{ steps.normalize.outputs.normalized }}-${{ inputs.version }}-${{ github.run_id }}
-          path: |
-            /tmp/tracee-out/
-            dist/
-          if-no-files-found: ignore
-          retention-days: 7
