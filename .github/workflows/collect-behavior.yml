@@ -218,11 +218,10 @@ jobs:
           echo "✅ Cleanup complete"
 
       - name: Upload behavioral analysis results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: behavior-${{ steps.normalize.outputs.normalized }}-${{ inputs.version }}-${{ github.run_id }}
           path: /tmp/tracee-out/behavior.jsonl
-          if-no-files-found: warn
           retention-days: 1
 
